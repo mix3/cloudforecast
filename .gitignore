@@ -15,3 +15,6 @@ server_list_dev.yaml
 site-lib
 extlib
 data
+cloudforecast.yaml
+host_config/all.yaml
+server_list.yaml
