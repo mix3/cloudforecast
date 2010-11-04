@@ -23,8 +23,9 @@ __PACKAGE__->mk_classdata('graph_key_list');
 __PACKAGE__->mk_classdata('graph_defs');
 __PACKAGE__->mk_classdata('title_func');
 __PACKAGE__->mk_classdata('sysinfo_func');
+__PACKAGE__->mk_classdata('alert_mail_func');
 
-our @EXPORT = qw/rrds fetcher graphs title sysinfo/;
+our @EXPORT = qw/rrds fetcher graphs title sysinfo alert_mail/;
 
 sub import {
     my ($class, $name) = @_;
@@ -133,6 +134,10 @@ sub sysinfo(&) {
     $class->sysinfo_func(shift);
 }
 
+sub alert_mail(&) {
+    my $class = caller;
+    $class->alert_mail_func(shift);
+}
 
 sub new {
     my $class = shift;
@@ -357,7 +362,17 @@ sub exec_fetch {
     my $self = shift;
     CloudForecast::Log->debug('fetcher start');
     my $ret = $self->do_fetch();
+    $self->call_alert_mail($ret);
     $self->call_updater($ret);
+}
+
+sub call_alert_mail {
+    my ($self, $ret) = @_;
+    
+    if( my $alert_mail_func = $self->alert_mail_func ){
+        CloudForecast::Log->debug('start alert mail');
+        $self->component('AlertMail')->send($alert_mail_func->($self, $ret));
+    }
 }
 
 sub call_fetch {
