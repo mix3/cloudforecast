@@ -18,12 +18,10 @@ sysinfo {
 
 fetcher {
     my $c = shift;
-    if(!$c->args->[0]){
-        die "empty database name.";
-    }
-    if(!$c->args->[1]){
-        die "empty table name.";
-    }
+
+    die "empty database name." if(!$c->args->[0]);
+    die "empty table name." if(!$c->args->[0]);
+
     my $mysql = $c->component('MySQL');
     my $table = $c->args->[0].'.'.$c->args->[1];
     my $row = $mysql->select_row("select count(*) as count from $table");
@@ -32,7 +30,7 @@ fetcher {
     my $subject = "[Q4M $info]";
     my $alert = !!($$row{count} > 20);
     
-    $c->component('AlertMail')->send($subject, $alert);
+    $c->component('AlertMail')->send({$subject => $alert});
 
     return [$$row{count}];
 };
