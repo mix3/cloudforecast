@@ -17,3 +17,4 @@ extlib
 data
 cloudforecast.yaml
 server_list.yaml
+host_config/all.yaml

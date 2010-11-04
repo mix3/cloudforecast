@@ -8,11 +8,7 @@ graphs 'count' => 'Q4M WaitTask Count';
 
 title {
     my $c = shift;
-    my $title='Q4M';
-    if ( my $table = $c->component('Q4M')->table ) {
-        $title .= " (queue_name=$table)";
-    }
-    return $title;
+    return 'Q4M '.$c->component('Utils')->str_info;
 };
 
 sysinfo {
@@ -22,14 +18,23 @@ sysinfo {
 
 fetcher {
     my $c = shift;
-    my $q4m = $c->component('Q4M');
-    my $result = $q4m->count;
+    if(!$c->args->[0]){
+        die "empty database name.";
+    }
+    if(!$c->args->[1]){
+        die "empty table name.";
+    }
+    my $mysql = $c->component('MySQL');
+    my $table = $c->args->[0].'.'.$c->args->[1];
+    my $row = $mysql->select_row("select count(*) as count from $table");
 
-    my $subject = '【ALERT】Q4M/'.$q4m->table;
-    my $alert = $result > 20 ? 1 : 0;
-    $c->component('AlertMail')->send($subject, $alert);
+    my $info = $c->component('Utils')->str_info;
+    my $subject = "[Q4M $info]";
+    my $alert = !!($$row{count} > 20);
     
-    return [$result];
+    $c->component('AlertMail')->send($subject, $alert);
+
+    return [$$row{count}];
 };
 
 __DATA__
