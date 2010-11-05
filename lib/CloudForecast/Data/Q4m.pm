@@ -29,9 +29,12 @@ alert_mail {
     my ($c, $ret) = @_;
 
     my $info = $c->component('Utils')->str_info;
-    my $subject = "[Q4M $info]";
-    my $alert = !!($ret > 20);
-    return {$subject => $alert};
+    my @subject = ("[Q4M $info]");
+    my %alert;
+    for(my $i = 0; $i <= $#subject; $i++){
+        $alert{$subject[$i]} = ($$ret[$i] > 20) ? 1 : 0;
+    }
+    return \%alert;
 };
 
 __DATA__
