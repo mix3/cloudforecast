@@ -361,18 +361,28 @@ sub do_fetch {
 sub exec_fetch {
     my $self = shift;
     CloudForecast::Log->debug('fetcher start');
-    my $ret = $self->do_fetch();
-    $self->call_alert_mail($ret);
-    $self->call_updater($ret);
+    eval {
+        my $ret = $self->do_fetch();
+        $self->call_alert_mail($ret);
+        $self->call_updater($ret);
+    };
+    CloudForecast::Log->warn("resource dead: $@") if $@;
+    $self->call_alert_die_mail($@ ? 1 :0);
 }
 
 sub call_alert_mail {
     my ($self, $ret) = @_;
-    
     if( my $alert_mail_func = $self->alert_mail_func ){
         CloudForecast::Log->debug('start alert mail');
-        $self->component('AlertMail')->send($alert_mail_func->($self, $ret));
+        $self->component('AlertMail')->alert_send($alert_mail_func->($self, $ret));
     }
+}
+
+sub call_alert_die_mail {
+    my ($self, $die) = @_;
+    
+    CloudForecast::Log->debug('start alert die mail');
+    $self->component('AlertMail')->alert_die_send($die);
 }
 
 sub call_fetch {
