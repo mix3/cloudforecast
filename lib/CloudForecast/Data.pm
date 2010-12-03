@@ -258,6 +258,7 @@ sub draw_graph {
 
     my @args = (
         $tmpfile,
+        '-w', 400,
         '-a', 'PNG',
         '-t', "$period_title ". $self->address,
         '-l', 0, #minimum
@@ -361,28 +362,23 @@ sub do_fetch {
 sub exec_fetch {
     my $self = shift;
     CloudForecast::Log->debug('fetcher start');
+    my $ret;
     eval {
-        my $ret = $self->do_fetch();
-        $self->call_alert_mail($ret);
-        $self->call_updater($ret);
+        $ret = $self->do_fetch();
     };
-    CloudForecast::Log->warn("resource dead: $@") if $@;
-    $self->call_alert_die_mail($@ ? 1 :0);
-}
-
-sub call_alert_mail {
-    my ($self, $ret) = @_;
-    if( my $alert_mail_func = $self->alert_mail_func ){
-        CloudForecast::Log->debug('start alert mail');
-        $self->component('AlertMail')->alert_send($alert_mail_func->($self, $ret));
+    # alive
+    my $err = $@;
+    if ( $err && $self->resource_class eq "Basic" ) {
+        $self->ledge_set_haserror('crit');
     }
-}
-
-sub call_alert_die_mail {
-    my ($self, $die) = @_;
-    
-    CloudForecast::Log->debug('start alert die mail');
-    $self->component('AlertMail')->alert_die_send($die);
+    elsif ( $err ) {
+        $self->ledge_set_haserror('warn');
+    }
+    else {
+        $self->ledge_set_haserror('ok');
+    }
+    die $err if $err;
+    $self->call_updater($ret);
 }
 
 sub call_fetch {
@@ -443,38 +439,78 @@ sub call_updater {
     }
 }
 
+
+sub _ledge_address_key {
+    my $self = shift;
+    my $address = sprintf "%s_%s",
+        $self->address,
+        join( "-", map { URI::Escape::uri_escape($_) } @{$self->args});
+    return $address;
+}
+
 sub _ledge {
     my $self = shift;
     my $method = shift;
     my @args = @_;
 
-    my $address = sprintf "%s_%s",
-        $self->address,
-        join( "-", map { URI::Escape::uri_escape($_) } @{$self->args});
+    $self->_ledge_do(
+        $method,
+        $self->resource_class,
+        $self->_ledge_address_key,
+        @args
+    );
+}
+
+sub _ledge_do {
+    my $self = shift;
+    my $method = shift;
+    my $resource_class = shift;
+    my $address = shift;
 
     ### Webインターフェイスからのアクセスセスは直接DBにアクセス
     if ( !$self->global_config->{__do_web} && $self->global_config->{gearman_enable} ) {
+        if ( $method !~ m!^background_! && ! defined wantarray ) {
+            $method = 'background_' . $method;
+        }
         my $gearman = CloudForecast::Gearman->new({
             host => $self->global_config->{gearman_server}->{host},
             port => $self->global_config->{gearman_server}->{port},
         });
-        $gearman->can( 'ledge_' . $method )->( $gearman, $self->resource_class, $address, @_  );
+        $gearman->can( 'ledge_' . $method )->( $gearman, $resource_class, $address, @_  );
     }
     else {
+        $method =~ s!^background_!!g;
         $self->{_ledge} ||= CloudForecast::Ledge->new({
             data_dir => $self->global_config->{data_dir},
             db_name  => $self->global_config->{db_name}
         });
-        $self->{_ledge}->can($method)->( $self->{_ledge}, $self->resource_class, $address, @_  );
+        $self->{_ledge}->can($method)->( $self->{_ledge}, $resource_class, $address, @_  );
     }
 }
 
-sub ledge_add { shift->_ledge('add', @_ ) }
-sub ledge_set { shift->_ledge('set', @_ ) }
-sub ledge_delete { shift->_ledge('delete', @_ ) }
-sub ledge_expire { shift->_ledge('expire', @_ ) }
-sub ledge_get { shift->_ledge('get', @_ ) }
+sub ledge_add { my $self = shift; $self->_ledge('add', @_ ) }
+sub ledge_set { my $self = shift; $self->_ledge('set', @_ ) }
+sub ledge_delete { my $self = shift; $self->_ledge('delete', @_ ) }
+sub ledge_expire { my $self = shift; $self->_ledge('expire', @_ ) }
+sub ledge_background_add { my $self = shift; $self->_ledge('background_add', @_ ) }
+sub ledge_background_set { my $self = shift; $self->_ledge('background_set', @_ ) }
+sub ledge_background_delete { my $self = shift; $self->_ledge('background_delete', @_ ) }
+sub ledge_background_expire { my $self = shift; $self->_ledge('background_expire', @_ ) }
 
+sub ledge_get { my $self = shift; $self->_ledge('get', @_ ) }
+
+sub ledge_set_haserror {
+    my $self = shift;
+    my $type = shift;
+    $self->_ledge_do(
+        'background_set',
+        '__SYSTEM__',
+        $self->address,
+        '__has_error__:'.$type,
+        1,
+        540,
+    );
+}
 
 sub init_rrd {
     my $self = shift;

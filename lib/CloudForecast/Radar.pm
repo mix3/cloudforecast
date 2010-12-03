@@ -45,7 +45,7 @@ sub run {
     $SIG{PIPE} = 'IGNORE';
 
     my $now = time;
-    my $next = $now - ( $now % 300 )  + 300;
+    my $next = $now - ( $now % 3 )  + 3;
     my $pid;
 
     CloudForecast::Log->warn( sprintf( "first radar start in %s", scalar localtime $next) );
