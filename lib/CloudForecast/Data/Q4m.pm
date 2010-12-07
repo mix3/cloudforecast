@@ -22,19 +22,14 @@ fetcher {
     my $mysql = $c->component('MySQL');
     my $table = $c->args->[0].'.'.$c->args->[1];
     my $row = $mysql->select_row("select count(*) as count from $table");
-    return [$$row{count}];
-};
 
-alert_mail {
-    my ($c, $ret) = @_;
-
-    my $info = $c->component('Utils')->str_info;
-    my @subject = ("[Q4M $info]");
-    my %alert;
-    for(my $i = 0; $i <= $#subject; $i++){
-        $alert{$subject[$i]} = ($$ret[$i] > 20) ? 1 : 0;
+    # Alert
+    if($$row{count} > 20){
+        my $info = $c->component('Utils')->str_info;
+        $c->component('AlertMail')->send("[Q4M $info]", "タスクが20オーバーです");
     }
-    return \%alert;
+
+    return [$$row{count}];
 };
 
 __DATA__

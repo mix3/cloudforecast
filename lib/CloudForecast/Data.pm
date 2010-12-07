@@ -23,9 +23,8 @@ __PACKAGE__->mk_classdata('graph_key_list');
 __PACKAGE__->mk_classdata('graph_defs');
 __PACKAGE__->mk_classdata('title_func');
 __PACKAGE__->mk_classdata('sysinfo_func');
-__PACKAGE__->mk_classdata('alert_mail_func');
 
-our @EXPORT = qw/rrds fetcher graphs title sysinfo alert_mail/;
+our @EXPORT = qw/rrds fetcher graphs title sysinfo/;
 
 sub import {
     my ($class, $name) = @_;
@@ -132,11 +131,6 @@ sub title(&) {
 sub sysinfo(&) {
     my $class = caller;
     $class->sysinfo_func(shift);
-}
-
-sub alert_mail(&) {
-    my $class = caller;
-    $class->alert_mail_func(shift);
 }
 
 sub new {
@@ -368,6 +362,11 @@ sub exec_fetch {
     };
     # alive
     my $err = $@;
+    
+    if ( $err ) {
+        $self->component('AlertMail')->send($err);
+    }
+    
     if ( $err && $self->resource_class eq "Basic" ) {
         $self->ledge_set_haserror('crit');
     }
