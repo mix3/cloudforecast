@@ -41,7 +41,7 @@ basic_alert {
     my $subject = "[Q4M $info]";
 
     my $result = {};
-    if($$row{count} < 20){
+    if($$row{count} > 20){
         $result->{$subject} = 'wait job num > 20';
     }
 
