@@ -12,7 +12,7 @@ graphs 'cache', 'Cache Hit Ratio';
 title {
     my $c = shift;
     my $title='MySQL InnoDB';
-    if ( my $port = $c->component('MySQL')->port ) {
+    if ( my $port = $c->component('InnoDB')->port ) {
         $title .= " (port=$port)";
     }
     return $title;
@@ -25,8 +25,9 @@ sysinfo {
 
 fetcher {
     my $c = shift;
-    
-    my $row = $c->component('MySQL')->select_row('show /*!50000 ENGINE*/ innodb status');
+
+    my $row = $c->component('InnoDB')->select_row('show /*!50000 ENGINE*/ innodb status');
+
     my $status = $row->{Status} or die 'could not get innodb status';
 
     my ($insert_row, $update_row, $delete_row, $read_row, $insert_vel, $update_vel, $delete_vel, $read_vel, $cache_hit, $cache_total);
@@ -49,7 +50,7 @@ fetcher {
 
 
     my %variable;
-    my $varible_rows = $c->component('MySQL')->select_all(q!show variables!);
+    my $varible_rows = $c->component('InnoDB')->select_all(q!show variables!);
     foreach my $variable_row ( @$varible_rows ) {
         $variable{$variable_row->{Variable_name}} = $variable_row->{Value};
     }
