@@ -22,14 +22,30 @@ fetcher {
     my $mysql = $c->component('MySQL');
     my $table = $c->args->[0].'.'.$c->args->[1];
     my $row = $mysql->select_row("select count(*) as count from $table");
+    return [$$row{count}];
+};
 
-    # Alert
-    if($$row{count} > 20){
-        my $info = $c->component('Utils')->str_info;
-        $c->component('AlertMail')->send("[Q4M $info]", "タスクが20オーバーです");
+basic_alert {
+    my $c = shift;
+
+    CloudForecast::Log->debug('Q4M basic alert');
+
+    die "empty database name." if(!$c->args->[0]);
+    die "empty table name." if(!$c->args->[1]);
+
+    my $mysql = $c->component('MySQL');
+    my $table = $c->args->[0].'.'.$c->args->[1];
+    my $row = $mysql->select_row("select count(*) as count from $table");
+
+    my $info = $c->component('Utils')->str_info;
+    my $subject = "[Q4M $info]";
+
+    my $result = {};
+    if($$row{count} < 20){
+        $result->{$subject} = 'wait job num > 20';
     }
 
-    return [$$row{count}];
+    return $result;
 };
 
 __DATA__
