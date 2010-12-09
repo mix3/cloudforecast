@@ -32,41 +32,32 @@ fetcher {
     
     my $info = decode_json($response->content);
     my $num = @$info;
-    return [$num];
+    
+    my $result = 0.0;
+    if($num > 0){
+        my $t = Time::Piece->strptime($$info[0]->{date}." +0900", "%Y-%m-%d %H:%M:%S %z");
+        $result = $num / (localtime() - $t) * 60;
+    }
+    
+    CloudForecast::Log->debug($result.' slow_res / min');
+    
+    return [$result];
 };
 
 basic_alert {
-    my $c = shift;
-
-    CloudForecast::Log->debug('Slow Response  basic alert');
-
-    my $address = $c->address;
-    my $port = $c->args->[0] || 80;
-    my $path = $c->args->[1] || '/';
-
-    my $ua = $c->component('LWP');
-    my $req = HTTP::Request->new( GET => "http://${address}:$port$path" );
-    my $response = $ua->request($req);
-    die "server-status failed: " .$response->status_line
-        unless $response->is_success;
-
-    my $info = decode_json($response->content);
-    my @arr = @$info;
-
-    my $min5before  = localtime() - 300 - (3600 * 2);
-    foreach(@$info){
-        my $t = Time::Piece->strptime($_->{date}." +0900", "%Y-%m-%d %H:%M:%S %z");
-        shift @arr if($min5before > $t);
-    }
+    my $c   = shift;
+    my $let = shift;
     
-    my $num = @arr;
-    CloudForecast::Log->debug('Slow Response Num (in 5 min): '.$num);
+    CloudForecast::Log->debug('Slow Response basic alert');
+
     my $result = {};
-    if($num > 20){
-        my $info = $c->component('Utils')->str_info;
-        my $subject = "[Slow Response $info]";
-        $result->{$subject} = 'Slow Response num > 20';
+
+    # slow_res / min > 10
+    if($$let[0] > 10){
+        my $subject = "[Slow Response ".$c->component('Utils')->str_info."]";
+        $result->{$subject} = "slow_res / min > 10";
     }
+
     return $result;
 };
 
