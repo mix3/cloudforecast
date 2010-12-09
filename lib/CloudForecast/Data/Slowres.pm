@@ -15,7 +15,20 @@ title {
 
 sysinfo {
     my $c = shift;
-    $c->ledge_get('sysinfo') || [];
+    my @sysinfo;
+    if ( my $sysinfo = $c->ledge_get('sysinfo') ) {
+        if($sysinfo->{size}){
+            my $k;
+            foreach (('','K','M','G')) {
+                $k = $_;
+                last if($sysinfo->{size} < 1024);
+                $sysinfo->{size} /= 1024;
+            }
+            push @sysinfo, 'LogFile Size', sprintf("%5.1f %sBytes",$sysinfo->{size}, $k);
+        }
+        push @sysinfo, 'LogFile Line Num', $sysinfo->{line} if($sysinfo->{line});
+    }
+    return \@sysinfo;
 };
 
 fetcher {
@@ -30,15 +43,18 @@ fetcher {
     die "server-status failed: " .$response->status_line
         unless $response->is_success;
     
-    my $info = decode_json($response->content);
-    my $num = @$info;
+    my $res = decode_json($response->content);
+
+    $c->ledge_set('sysinfo', \%{$res->{'log_bak_info'}});
+
+    my $num = my @info = @{$res->{'log'}};
     
     my $result = 0.0;
     if($num > 0){
-        my $t = Time::Piece->strptime($$info[0]->{date}." +0900", "%Y-%m-%d %H:%M:%S %z");
+        my $t = Time::Piece->strptime($info[0]->{date}." +0900", "%Y-%m-%d %H:%M:%S %z");
         $result = $num / (localtime() - $t) * 60;
     }
-    
+
     CloudForecast::Log->debug($result.' slow_res / min');
     
     return [$result];
