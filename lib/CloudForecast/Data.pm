@@ -361,6 +361,7 @@ sub do_fetch {
 
 sub exec_fetch {
     my $self = shift;
+    
     CloudForecast::Log->debug('fetcher start');
     my $ret;
     eval {
@@ -370,7 +371,7 @@ sub exec_fetch {
     my $err = $@;
     
     if ( $err ) {
-        $self->component('AlertMail')->send($err);
+        $self->component('AlertMail')->send_die($self->component('Utils')->str_info."\n".$err);
     }
     
     if ( $err && $self->resource_class eq "Basic" ) {
@@ -390,7 +391,7 @@ sub exec_fetch {
         CloudForecast::Log->debug('basic alert start');
         my $alert_ret = $basic_alert_func->($self, $ret);
         foreach(keys %$alert_ret){
-            $self->component('AlertMail')->send($_, $alert_ret->{$_});
+            $self->component('AlertMail')->send_basic($_."\n".$alert_ret->{$_});
         }
     }
 }

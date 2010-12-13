@@ -37,12 +37,11 @@ basic_alert {
     my $table = $c->args->[0].'.'.$c->args->[1];
     my $row = $mysql->select_row("select count(*) as count from $table");
 
-    my $info = $c->component('Utils')->str_info;
-    my $subject = "[Q4M $info]";
+    my $subject = "[Q4M]".$c->component('Utils')->str_info;
 
     my $result = {};
     if($$row{count} > 20){
-        $result->{$subject} = 'wait job num > 20';
+        $result->{$subject} = 'wait job: '.$$row{count}.' (Cond: waito job num > 20)';
     }
 
     return $result;

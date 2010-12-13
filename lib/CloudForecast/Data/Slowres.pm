@@ -70,8 +70,8 @@ basic_alert {
 
     # slow_res / min > 10
     if($$let[0] > 10){
-        my $subject = "[Slow Response ".$c->component('Utils')->str_info."]";
-        $result->{$subject} = "slow_res / min > 10";
+        my $subject = "[Slow Response]".$c->component('Utils')->str_info;
+        $result->{$subject} = "slow_res: ".$$let[0]." (Cond: slow_res / min > 10)";
     }
 
     return $result;
