@@ -100,6 +100,7 @@ sub fetcher_worker {
     my $worker = $self->gearman_worker;
     $worker->register_function('fetcher', sub {
         my $job = shift;
+        my $resource;
         eval {
             my $args;
             eval {
@@ -107,7 +108,7 @@ sub fetcher_worker {
                 $args or die "invalid arg";
             };
             die "failed thaw: $@" if $@;
-            my $resource = $self->load_resource($args);
+            $resource = $self->load_resource($args);
             $resource->exec_fetch;
         };
         CloudForecast::Log->warn("fetcher failed: $@") if $@;
@@ -210,7 +211,7 @@ sub watchdog_zombie {
 
 sub run_worker {
     my $self = shift;
-    my $worker = $self->gearman_worker;
+
  
     my $scoreboard = CloudForecast::Gearman::Scoreboard->new( 
         undef, $self->max_workers );
@@ -237,6 +238,7 @@ sub run_worker {
         $pm->start and next;
         $0 = "$0 (worker)";
         my $i = 0;
+        my $worker = $self->gearman_worker;
         $worker->work(
             on_start => sub {
                 $i++;
